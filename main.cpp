@@ -12,22 +12,22 @@ public:
         static_cast<Type*>(this)->do_stuff;
     }
 
-    auto do_other_stuff() {
+    auto do_other_stuff(uint64_t n) {
         static_cast<Type*>(this)->do_other_stuff;
     }
 };
 
 class Derived : public Base<Derived> {
 private:
-    uint64_t n;
+    uint64_t counter;
 
 public:
     auto do_stuff() {
-        return n;
+        return counter;
     }
 
-    auto do_other_stuff() {
-        return n += 1;
+    auto do_other_stuff(uint64_t n) {
+        return counter += n;
     }
 };
 
@@ -37,34 +37,43 @@ void RunCRTP(Base<Type>* object)
     const unsigned int N = 40000;
     for(auto i = 0; i < N; i++) {
         for(auto j = 0; j < i; j++) {
-            object->do_other_stuff();
+            object->do_other_stuff(j);
         }
     }
+
+    std::cout << object->do_stuff() << std::endl;
 }
 
 
 class VBase {
 public:
     virtual uint64_t v_do_stuff() = 0;
-    virtual uint64_t v_do_other_stuff() = 0;
+    virtual uint64_t v_do_other_stuff(uint64_t n) = 0;
 };
 
 class VDerived : public VBase {
 private:
-    uint64_t n;
+    uint64_t counter;
 public:
     virtual uint64_t v_do_stuff() override {
-        return n;
+        return counter;
     }
 
-    virtual uint64_t v_do_other_stuff() override {
-        return n += 1;
+    virtual uint64_t v_do_other_stuff(uint64_t n) override {
+        return counter += n;
     }
 };
 
 void RunNormal(VBase  * object)
 {
-    
+    const unsigned int N = 40000;
+    for(auto i = 0; i < N; i++) {
+        for(auto j = 0; j < i; j++) {
+            object->v_do_other_stuff(j);
+        }
+    }
+
+    std::cout << object->v_do_stuff() << std::endl;
 }
 
 template <typename T, typename S>
@@ -82,3 +91,14 @@ void Benchmark(T & object, S function, const std::string name)
     std::cout << "Time" <<":" << duration.count() << std::endl;
 }
 
+int main()
+{
+    VDerived v_object;
+    Benchmark(v_object, RunNormal, "Virtual Interface");
+
+    Derived object;
+    Benchmark(object, RunCRTP<Derived>, "CRTP interface");
+
+    return 0;
+
+}
